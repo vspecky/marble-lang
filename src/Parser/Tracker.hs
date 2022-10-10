@@ -1,0 +1,33 @@
+module Parser.Tracker where
+
+data Tracker =
+  Tracker
+    { trckCod :: String
+    , trckIdx :: Int
+    , trckLin :: Int
+    , trckCol :: Int
+    }
+  deriving (Show)
+
+new :: String -> Tracker
+new code = Tracker code 0 1 1
+
+advance :: Tracker -> Tracker
+advance trck@Tracker {trckCod = []} = trck
+advance (Tracker ('\n':cs) idx lin col) = Tracker cs (idx + 1) (lin + 1) 1
+advance (Tracker (_:cs) idx lin col) = Tracker cs (idx + 1) lin (col + 1)
+
+advanceN :: Int -> Tracker -> Tracker
+advanceN 0 = id
+advanceN 1 = advance
+advanceN n = advance . advanceN (n - 1)
+
+advanceWhile :: (Char -> Bool) -> Tracker -> Tracker
+advanceWhile f trck@Tracker {trckCod = []} = trck
+advanceWhile f trck@Tracker {trckCod = (x:_)} =
+  if f x
+    then advanceWhile f (advance trck)
+    else trck
+
+startsWith :: String -> Tracker -> Bool
+startsWith str trck = str == take (length str) (trckCod trck)
