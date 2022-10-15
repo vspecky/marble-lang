@@ -1,11 +1,12 @@
 module Main where
 
 import Parser
-import Parser.State
 import qualified Parser.Tracker as Tracker
+import Utils
 
 main :: IO ()
 main = do
-  let trck = Tracker.new "/+*-"
-  let parsed = runStateT (oneOrMoreOf anyOperatorP) trck
+  program <- readFile "./examples/proto_09-10-2022/fib.mrbl"
+  let trck = Tracker.new program
+  let parsed = runStateT programP trck
   print parsed

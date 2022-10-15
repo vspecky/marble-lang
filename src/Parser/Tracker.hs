@@ -29,5 +29,12 @@ advanceWhile f trck@Tracker {trckCod = (x:_)} =
     then advanceWhile f (advance trck)
     else trck
 
+getWhile :: (Char -> Bool) -> Tracker -> String
+getWhile f trck@Tracker {trckCod = []} = []
+getWhile f trck@Tracker {trckCod = (x:xs)} =
+  if f x
+    then x : getWhile f (advance trck)
+    else []
+
 startsWith :: String -> Tracker -> Bool
 startsWith str trck = str == take (length str) (trckCod trck)

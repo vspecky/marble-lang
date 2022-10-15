@@ -1,7 +1,8 @@
-module Parser.State where
+module Utils where
 
 import Control.Applicative
 import Control.Monad
+import Control.Monad.Trans.Class
 
 -- | State monad transformer.
 --
@@ -34,6 +35,12 @@ instance Monad m => Monad (StateT s m) where
       (b, s'') <- runStateT (f a) s'
       pure (b, s'')
 
+instance MonadTrans (StateT s) where
+  lift m =
+    StateT $ \s -> do
+      a <- m
+      pure (a, s)
+
 instance Monoid e => Alternative (Either e) where
   empty = Left mempty
   Left e1 <|> Left e2 = Left $ mappend e1 e2
@@ -51,3 +58,30 @@ getState = StateT $ \s -> pure (s, s)
 
 setState :: Monad m => s -> StateT s m ()
 setState s = StateT $ \_ -> pure ((), s)
+
+newtype EitherT e m a =
+  EitherT
+    { runEitherT :: m (Either e a)
+    }
+
+instance Monad m => Functor (EitherT e m) where
+  fmap f (EitherT m) = EitherT $ fmap f <$> m
+
+instance Monad m => Applicative (EitherT e m) where
+  pure = EitherT . pure . pure
+  (EitherT m1) <*> (EitherT m2) =
+    EitherT $ do
+      ef <- m1
+      ea <- m2
+      pure $ ef <*> ea
+
+instance Monad m => Monad (EitherT e m) where
+  (EitherT m1) >>= f =
+    EitherT $ do
+      eith <- m1
+      case eith of
+        Left e -> pure $ Left e
+        Right a -> runEitherT $ f a
+
+instance MonadTrans (EitherT e) where
+  lift = EitherT . fmap pure
