@@ -85,3 +85,6 @@ instance Monad m => Monad (EitherT e m) where
 
 instance MonadTrans (EitherT e) where
   lift = EitherT . fmap pure
+
+lift2 :: (MonadTrans u, MonadTrans t, Monad m, Monad (t m)) => m a -> u (t m) a
+lift2 = lift . lift

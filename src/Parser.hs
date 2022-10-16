@@ -98,6 +98,12 @@ opLesserThanTP = operatorTP "<" OpLesserThan
 opLesserThanEqTP :: Parser Operator
 opLesserThanEqTP = operatorTP "<=" OpLesserThanEq
 
+opBoolAndTP :: Parser Operator
+opBoolAndTP = operatorTP "&&" OpBoolAnd
+
+opBoolOrTP :: Parser Operator
+opBoolOrTP = operatorTP "||" OpBoolOr
+
 opDoubleInvCommasTP :: Parser Char
 opDoubleInvCommasTP = tokenParser "\"" '"' $ Expected "Double inverted comma"
 
@@ -147,13 +153,17 @@ funcApplicationP :: Parser Atom
 funcApplicationP = do
   fname <- identNameTP
   stringParser "("
-  args <- zeroOrMoreOf expressionP
+  firstArg <- maybeOf expressionP
+  restArgs <- zeroOrMoreOf (stringParser "," *> expressionP)
   stringParser ")"
-  pure $ FuncApplication fname args
+  case firstArg of
+    Nothing -> pure $ FuncApplication fname []
+    Just arg -> pure $ FuncApplication fname (arg : restArgs)
 
 atomP :: Parser Atom
 atomP =
-  mIntTP <|> mStrTP <|> mBoolTP <|> nullTP <|> funcApplicationP <|> identifierTP
+  mIntTP <|> mStrTP <|> mBoolTP <|> nullTP <|> funcApplicationP <|> identifierTP <|>
+  (stringParser "(" *> (Nested <$> expressionP) <* stringParser ")")
 
 factorBranchP :: Parser (Operator, Atom)
 factorBranchP = do
@@ -179,19 +189,31 @@ termsP = do
   branches <- zeroOrMoreOf termBranchP
   pure $ Terms factors branches
 
-expressionBranchP :: Parser (Operator, Terms)
-expressionBranchP = do
+comparisonBranchP :: Parser (Operator, Terms)
+comparisonBranchP = do
   op <-
     opEqualTP <|> opGreaterThanEqTP <|> opGreaterThanTP <|> opLesserThanEqTP <|>
     opLesserThanTP
   terms <- termsP
   pure (op, terms)
 
+comparisonP :: Parser Comparison
+comparisonP = do
+  terms <- termsP
+  branch <- maybeOf comparisonBranchP
+  pure $ Comparison terms branch
+
+expressionBranchP :: Parser (Operator, Comparison)
+expressionBranchP = do
+  op <- opBoolAndTP <|> opBoolOrTP
+  comparison <- comparisonP
+  pure (op, comparison)
+
 expressionP :: Parser Expression
 expressionP = do
-  terms <- termsP
-  branch <- maybeOf expressionBranchP
-  pure $ Expression terms branch
+  comparison <- comparisonP
+  branches <- zeroOrMoreOf expressionBranchP
+  pure $ Expression comparison branches
 
 returnP :: Parser Statement
 returnP = stringParser "return" *> (Return <$> expressionP) <* stringParser ";"
@@ -239,7 +261,7 @@ funcDeclP = do
       Nothing -> FuncDecl funcName [] funcBody
 
 tlExprP :: Parser TopLevel
-tlExprP = TLExpr <$> expressionP <* stringParser ";"
+tlExprP = TLExpr <$> (expressionP <* stringParser ";")
 
 tlStatementP :: Parser TopLevel
 tlStatementP = TLStatement <$> statementP
