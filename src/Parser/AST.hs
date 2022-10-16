@@ -4,9 +4,6 @@ type FuncName = String
 
 type IdentName = String
 
-class MarbleType t where
-  typeOf :: t -> String
-
 data Operator
   = OpPlus
   | OpMinus
@@ -17,10 +14,9 @@ data Operator
   | OpGreaterThanEq
   | OpLesserThan
   | OpLesserThanEq
+  | OpBoolAnd
+  | OpBoolOr
   deriving (Show)
-
-instance MarbleType Operator where
-  typeOf _ = "Operator"
 
 data Atom
   = MInt Int
@@ -29,17 +25,8 @@ data Atom
   | MNull
   | FuncApplication FuncName [Expression]
   | Identifier IdentName
-  | Nested Terms
+  | Nested Expression
   deriving (Show)
-
-instance MarbleType Atom where
-  typeOf a =
-    case a of
-      MInt _ -> "Int"
-      MStr _ -> "String"
-      MBool _ -> "Boolean"
-      MNull -> "Null"
-      _ -> "Atom"
 
 data Factors =
   Factors Atom [(Operator, Atom)]
@@ -49,8 +36,12 @@ data Terms =
   Terms Factors [(Operator, Factors)]
   deriving (Show)
 
+data Comparison =
+  Comparison Terms (Maybe (Operator, Terms))
+  deriving (Show)
+
 data Expression =
-  Expression Terms (Maybe (Operator, Terms))
+  Expression Comparison [(Operator, Comparison)]
   deriving (Show)
 
 data Statement

@@ -26,10 +26,13 @@ executable marble
 
     other-modules:
         Interpreter
+      , Interpreter.Environment
+      , Interpreter.Error
+      , Interpreter.Std
       , Parser
       , Parser.AST
-      , Parser.Tracker
       , Parser.Error
+      , Parser.Tracker
       , Utils
 
     -- LANGUAGE extensions used by modules in this package.
@@ -38,6 +41,7 @@ executable marble
         base ^>=4.14.3.0
       , containers == 0.6.6
       , transformers
+      , template-haskell
     hs-source-dirs:   src
     ghc-options: -Wno-missing-home-modules
     default-language: Haskell2010
