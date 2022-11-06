@@ -1,0 +1,57 @@
+
+fn fib :: Int x -> Int =
+  print(x)
+  if x <= 1 then
+    return 1
+  else
+    return fib(x - 1) + fib(x - 2)
+
+fn fib :: Int x -> Int {
+  print(x);
+        if x <= 1 then {
+      return 1;
+  }      else 
+      {
+        return
+          fib(x - 1)
+      + fib(x - 2);
+    }
+}
+
+fn fib :: Int -> Int
+fn fib(x) =
+  print(x)
+  if x <= 1 =
+    return 1
+  else =
+    return fib(x - 1) + fib(x - 2)
+
+const to_calc :: Int
+const to_calc = 13
+
+fn fib :: Int -> Int
+fn fib x =
+  if | x <= 1 =
+    if | x == 1 =
+      return 1
+    | x < 1 =
+      return 1
+    | else =
+      return 1
+  | else =
+    return fib(x - 1) + fib(x - 2)
+
+fn add :: Int, Int -> Int
+fn add a b =
+  print(a, b)
+  return a + b
+
+fn add :: (trait ToInt, trait ToInt) -> Int
+fn add a b =
+  print(a, b)
+  return a.to_int()
+    + b.to_int()
+
+fn main :: ()
+fn main =
+  print(fib(13))

@@ -17,13 +17,13 @@ stdFnDict = Map.fromList [("print", stdPrint), ("string", stdString)]
 showAtom :: Atom -> String
 showAtom a =
   case a of
-    MInt a -> show a
-    MStr s -> s
-    MBool b ->
+    MInt a _ -> show a
+    MStr s _ -> s
+    MBool b _ ->
       if b
         then "true"
         else "false"
-    MNull -> "null"
+    MNull _ -> "null"
     _ -> "<Unknown>"
 
 verifyArgArity :: String -> Int -> Int -> Interpreter ()
@@ -39,16 +39,13 @@ verifyArgArity fnName expected given =
 
 stdPrint :: [Atom] -> Interpreter Atom
 stdPrint atoms = do
-  forM_ atoms printAtom
+  forM_ atoms (lift2 . putStr . showAtom)
   lift2 $ putStr "\n"
-  pure MNull
-  where
-    printAtom :: Atom -> Interpreter ()
-    printAtom a = lift2 $ putStr $ showAtom a
+  pure $ MNull noPos
 
 stdString :: [Atom] -> Interpreter Atom
 stdString atoms = do
   verifyArgArity "stdString" 1 (length atoms)
   case atoms of
-    [a] -> pure $ MStr $ showAtom a
-    _ -> pure MNull
+    [a] -> pure $ MStr (showAtom a) noPos
+    _ -> pure $ MNull noPos

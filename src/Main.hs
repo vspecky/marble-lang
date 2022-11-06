@@ -22,7 +22,6 @@ main = do
           (err, env) <-
             runStateT (runEitherT $ evalProgram program) (Environment Map.empty)
           case err of
-            Left e -> print e >>= const (print env)
+            Left e -> print e >> print env
             Right _ -> pure ()
     _ -> print "Usage: ./marble <path_to_file>"
-  --print parsed

@@ -24,7 +24,7 @@ envSetNew :: String -> EnvEntry -> Interpreter ()
 envSetNew name entry = do
   env <- lift getState
   let langLookup = Map.lookup name (unEnv env)
-  let stdLookup = Map.lookup name stdFnDict
+      stdLookup = Map.lookup name stdFnDict
   if isJust langLookup || isJust stdLookup
     then throw $
          RuntimeError $
@@ -53,10 +53,10 @@ envLookup ident = do
 intoEnvEntry :: Atom -> Interpreter EnvEntry
 intoEnvEntry a =
   case a of
-    MInt n -> pure $ MInterpInt n
-    MStr s -> pure $ MInterpStr s
-    MBool b -> pure $ MInterpBool b
-    MNull -> pure MInterpNull
+    MInt n _ -> pure $ MInterpInt n
+    MStr s _ -> pure $ MInterpStr s
+    MBool b _ -> pure $ MInterpBool b
+    MNull _ -> pure MInterpNull
     _ ->
       throw $
       InterpreterErr $ "Value of '" <> show a <> "' cannot be stored in env"
@@ -64,20 +64,20 @@ intoEnvEntry a =
 atomAsBool :: Atom -> Interpreter Bool
 atomAsBool a =
   case a of
-    MInt n -> pure (n > 0)
-    MStr s -> pure (s /= "")
-    MBool b -> pure b
-    MNull -> pure False
+    MInt n _ -> pure (n > 0)
+    MStr s _ -> pure (s /= "")
+    MBool b _ -> pure b
+    MNull _ -> pure False
     _ -> throw $ InterpreterErr $ "Tried to convert '" <> show a <> "' to bool"
 
 evalVarRef :: IdentName -> Interpreter Atom
 evalVarRef varName = do
   entry <- envLookup varName
   case entry of
-    MInterpInt n -> pure $ MInt n
-    MInterpStr s -> pure $ MStr s
-    MInterpBool b -> pure $ MBool b
-    MInterpNull -> pure MNull
+    MInterpInt n -> pure $ MInt n noPos
+    MInterpStr s -> pure $ MStr s noPos
+    MInterpBool b -> pure $ MBool b noPos
+    MInterpNull -> pure $ MNull noPos
     MInterpFunc fnName _ _ ->
       throw $ RuntimeError $ "Function '" <> fnName <> "' never called"
 
@@ -85,7 +85,7 @@ evalFuncApplication :: FuncName -> [Expression] -> Interpreter Atom
 evalFuncApplication fname exprs = do
   env <- lift getState
   let stdFn = Map.lookup fname stdFnDict
-  let langFn = Map.lookup fname (unEnv env)
+      langFn = Map.lookup fname (unEnv env)
   case (stdFn, langFn) of
     (Just stdF, Nothing) -> do
       args <- forM exprs evalExpression
@@ -95,15 +95,15 @@ evalFuncApplication fname exprs = do
         envExprs <- forM exprs evalExpression
         envEntries <- forM envExprs intoEnvEntry
         let fnEnvMap = Map.filter entryIsFunc (unEnv env)
-        let envMap = Map.fromList $ zip argNames envEntries
-        let env' = Environment $ Map.union envMap fnEnvMap
+            envMap = Map.fromList $ zip argNames envEntries
+            env' = Environment $ Map.union envMap fnEnvMap
         args <- forM exprs evalExpression
         lift $ setState env'
         result <- evalBlock body
         lift $ setState env
         case result of
           Returning val -> pure val
-          _ -> pure MNull
+          _ -> pure $ MNull noPos
       | otherwise ->
         throw $
         RuntimeError $
@@ -120,39 +120,39 @@ evalFuncApplication fname exprs = do
 evalAtom :: Atom -> Interpreter Atom
 evalAtom a =
   case a of
-    FuncApplication fnName fnArgs -> evalFuncApplication fnName fnArgs
-    Identifier ident -> evalVarRef ident
-    Nested expr -> evalExpression expr
-    MInt n -> pure $ MInt n
-    MStr s -> pure $ MStr s
-    MBool b -> pure $ MBool b
-    MNull -> pure MNull
+    FuncApplication fnName fnArgs _ -> evalFuncApplication fnName fnArgs
+    Identifier ident _ -> evalVarRef ident
+    Nested expr _ -> evalExpression expr
+    MInt n _ -> pure $ MInt n noPos
+    MStr s _ -> pure $ MStr s noPos
+    MBool b _ -> pure $ MBool b noPos
+    MNull _ -> pure $ MNull noPos
 
 atomBinOp :: Atom -> Operator -> Atom -> Interpreter Atom
 atomBinOp a1 op a2 =
   case (a1, op, a2) of
-    (MInt n1, OpPlus, MInt n2) -> yield $ MInt (n1 + n2)
-    (MInt n1, OpMinus, MInt n2) -> yield $ MInt (n1 - n2)
-    (MInt n1, OpMultiply, MInt n2) -> yield $ MInt (n1 * n2)
-    (MInt n1, OpDivide, MInt 0) -> throw DivisionByZero
-    (MInt n1, OpDivide, MInt n2) -> yield $ MInt (n1 `div` n2)
-    (MInt n1, OpEqual, MInt n2) -> yield $ MBool (n1 == n2)
-    (MInt n1, OpGreaterThan, MInt n2) -> yield $ MBool (n1 > n2)
-    (MInt n1, OpGreaterThanEq, MInt n2) -> yield $ MBool (n1 >= n2)
-    (MInt n1, OpLesserThan, MInt n2) -> yield $ MBool (n1 < n2)
-    (MInt n1, OpLesserThanEq, MInt n2) -> yield $ MBool (n1 <= n2)
-    (MBool b1, OpBoolAnd, MBool b2) -> yield $ MBool (b1 && b2)
-    (MBool b1, OpBoolOr, MBool b2) -> yield $ MBool (b1 || b2)
-    (MStr s1, OpPlus, MStr s2) -> yield $ MStr (s1 <> s2)
-    (MStr s1, OpEqual, MStr s2) -> yield $ MBool (s1 == s2)
-    (fa@(FuncApplication _ _), op, other) -> evalThenBinOp fa op other
-    (other, op, fa@(FuncApplication _ _)) -> evalThenBinOp other op fa
-    (ident@(Identifier _), op, other) -> evalThenBinOp ident op other
-    (other, op, ident@(Identifier _)) -> evalThenBinOp other op ident
-    (Nested expr, op, other) -> do
+    (MInt n1 _, OpPlus _, MInt n2 _) -> yield $ MInt (n1 + n2) noPos
+    (MInt n1 _, OpMinus _, MInt n2 _) -> yield $ MInt (n1 - n2) noPos
+    (MInt n1 _, OpMultiply _, MInt n2 _) -> yield $ MInt (n1 * n2) noPos
+    (MInt n1 _, OpDivide _, MInt 0 _) -> throw DivisionByZero
+    (MInt n1 _, OpDivide _, MInt n2 _) -> yield $ MInt (n1 `div` n2) noPos
+    (MInt n1 _, OpEqual _, MInt n2 _) -> yield $ MBool (n1 == n2) noPos
+    (MInt n1 _, OpGreaterThan _, MInt n2 _) -> yield $ MBool (n1 > n2) noPos
+    (MInt n1 _, OpGreaterThanEq _, MInt n2 _) -> yield $ MBool (n1 >= n2) noPos
+    (MInt n1 _, OpLesserThan _, MInt n2 _) -> yield $ MBool (n1 < n2) noPos
+    (MInt n1 _, OpLesserThanEq _, MInt n2 _) -> yield $ MBool (n1 <= n2) noPos
+    (MBool b1 _, OpBoolAnd _, MBool b2 _) -> yield $ MBool (b1 && b2) noPos
+    (MBool b1 _, OpBoolOr _, MBool b2 _) -> yield $ MBool (b1 || b2) noPos
+    (MStr s1 _, OpPlus _, MStr s2 _) -> yield $ MStr (s1 <> s2) noPos
+    (MStr s1 _, OpEqual _, MStr s2 _) -> yield $ MBool (s1 == s2) noPos
+    (fa@(FuncApplication {}), op, other) -> evalThenBinOp fa op other
+    (other, op, fa@(FuncApplication {})) -> evalThenBinOp other op fa
+    (ident@(Identifier {}), op, other) -> evalThenBinOp ident op other
+    (other, op, ident@(Identifier {})) -> evalThenBinOp other op ident
+    (Nested expr _, op, other) -> do
       a1' <- evalExpression expr
       atomBinOp a1' op other
-    (other, op, Nested expr) -> do
+    (other, op, Nested expr _) -> do
       a2' <- evalExpression expr
       atomBinOp other op a2'
     (_, op, _) ->
@@ -167,8 +167,8 @@ atomBinOp a1 op a2 =
       atomBinOp a1' op a2'
 
 evalFactors :: Factors -> Interpreter Atom
-evalFactors (Factors first []) = evalAtom first
-evalFactors (Factors first rest) =
+evalFactors (Factors first [] _) = evalAtom first
+evalFactors (Factors first rest _) =
   foldM (\a1 (op, a2) -> atomBinOp a1 op a2) first rest
 
 atomFactorsBinOp :: Atom -> Operator -> Factors -> Interpreter Atom
@@ -177,13 +177,13 @@ atomFactorsBinOp a1 op f = do
   atomBinOp a1 op a2
 
 evalTerms :: Terms -> Interpreter Atom
-evalTerms (Terms first rest) = do
+evalTerms (Terms first rest _) = do
   atomFirst <- evalFactors first
   foldM (\a (op, f) -> atomFactorsBinOp a op f) atomFirst rest
 
 evalComparison :: Comparison -> Interpreter Atom
-evalComparison (Comparison t Nothing) = evalTerms t
-evalComparison (Comparison t1 (Just (op, t2))) = do
+evalComparison (Comparison t Nothing _) = evalTerms t
+evalComparison (Comparison t1 (Just (op, t2)) _) = do
   a1 <- evalTerms t1
   a2 <- evalTerms t2
   atomBinOp a1 op a2
@@ -194,27 +194,27 @@ atomComparisonBinOp a1 op c = do
   atomBinOp a1 op a2
 
 evalExpression :: Expression -> Interpreter Atom
-evalExpression (Expression first rest) = do
+evalExpression (Expression first rest _) = do
   a1 <- evalComparison first
   foldM (\a (op, c) -> atomComparisonBinOp a op c) a1 rest
 
 evalStatement :: Statement -> Interpreter ExecutionStatus
 evalStatement stmt =
   case stmt of
-    Return expr -> do
+    Return expr _ -> do
       a <- evalExpression expr
       pure $ Returning a
-    VarDecl varName expr -> do
+    VarDecl varName expr _ -> do
       a <- evalExpression expr
       entry <- intoEnvEntry a
       envSetNew varName entry
       pure Executing
-    VarMutate varName expr -> do
+    VarMutate varName expr _ -> do
       a <- evalExpression expr
       entry <- intoEnvEntry a
       envSet varName entry
       pure Executing
-    If expr ifBlock elseCase -> do
+    If expr ifBlock elseCase _ -> do
       a <- evalExpression expr
       aBool <- atomAsBool a
       case (aBool, elseCase) of
@@ -234,9 +234,9 @@ evalBlock (x:xs) = do
 evalTopLevel :: TopLevel -> Interpreter ()
 evalTopLevel lvl = do
   case lvl of
-    FuncDecl fName args body -> envSetNew fName (MInterpFunc fName args body)
-    TLExpr expr -> evalExpression expr >>= const (pure ())
-    TLStatement stmt -> evalStatement stmt >>= const (pure ())
+    FuncDecl fName args body _ -> envSetNew fName (MInterpFunc fName args body)
+    TLExpr expr _ -> evalExpression expr >>= const (pure ())
+    TLStatement stmt _ -> evalStatement stmt >>= const (pure ())
 
 evalProgram :: Program -> Interpreter ()
 evalProgram (Program topLevels) = do
@@ -247,7 +247,7 @@ evalProgram (Program topLevels) = do
     buildFnEnv [] = pure []
     buildFnEnv (t:ts) =
       case t of
-        FuncDecl fName args body -> do
+        FuncDecl fName args body _ -> do
           envSetNew fName (MInterpFunc fName args body)
           buildFnEnv ts
         _ -> do

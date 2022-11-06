@@ -1,5 +1,7 @@
 module Parser.Tracker where
 
+import Utils
+
 data Tracker =
   Tracker
     { trckCod :: String
@@ -38,3 +40,6 @@ getWhile f trck@Tracker {trckCod = (x:xs)} =
 
 startsWith :: String -> Tracker -> Bool
 startsWith str trck = str == take (length str) (trckCod trck)
+
+toPos :: Tracker -> Pos
+toPos (Tracker _ _ lin col) = Pos lin col

@@ -38,7 +38,7 @@ executable marble
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:
-        base ^>=4.14.3.0
+        base ^>=4.16.3.0
       , containers == 0.6.6
       , transformers
       , template-haskell
